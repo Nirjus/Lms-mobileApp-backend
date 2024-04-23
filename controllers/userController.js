@@ -72,32 +72,17 @@ export const userLogin = async (req, res, next) => {
       throw Error("Password not matched");
     }
     //  token geneartion
-    const token = jwt.sign({ id:user._id }, jwtSecret, {
+    const token = jwt.sign({ id: user._id }, jwtSecret, {
       expiresIn: "3d",
     });
 
-  res.cookie("token",token,{
-    expires: new Date(Date.now() + 3*24*60*60*1000),
-    maxAge: 3*24*60*60*1000, // 3day
-    httpOnly: true,
-    // secure: true,  // this option is only true in production
-    sameSite: "none",
-  })
-    // dont show the password
-    const loginUser = {
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      role: user.role,
-      id: user._id,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
+    user.password = undefined;
 
     return res.status(201).json({
       success: true,
       message: "Login Successfully",
-      loginUser,
+      user,
+      token,
     });
   } catch (error) {
     next(error);
@@ -106,37 +91,64 @@ export const userLogin = async (req, res, next) => {
 
 export const logout = async (req, res, next) => {
   try {
-        res.clearCookie("token",{
-          httpOnly: true,
-          // secure: true,
-          sameSite: "none"
-        })
+    res.clearCookie("token", {
+      httpOnly: true,
+      // secure: true,
+      sameSite: "none",
+    });
 
-        return res.status(201).json({
-          success: true,
-          message: "Logout successfull"
-        })
+    return res.status(201).json({
+      success: true,
+      message: "Logout successfull",
+    });
   } catch (error) {
-       next(error)
+    next(error);
   }
-}
+};
 
 export const getUser = async (req, res, next) => {
-    try {
-        const id = req.userId;
-    
-        const user = await User.findById(id);
+  try {
+    const user = req.user;
 
-        if(!user){
-            throw Error("User not Found!");
-        }
-
-        return res.status(201).json({
-            success: true,
-            message: "User returned successfully",
-            user
-        })
-    } catch (error) {
-        next(error)
+    if (!user) {
+      throw Error("User not Found!");
     }
-}
+
+    return res.status(201).json({
+      success: true,
+      message: "User returned successfully",
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const purchaseCourse = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    const { courseId } = req.body;
+    if (!user) {
+      throw Error("User not found");
+    }
+    const isCoursePurchased = user.purchaseList.find(
+      (i) => i.courseId.toString() === courseId.toString()
+    );
+
+    if (isCoursePurchased) {
+      throw Error("Course already purchased");
+    }
+    user.purchaseList.push({
+      courseId: courseId,
+    });
+
+    await user.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Course Purchased successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
