@@ -22,6 +22,9 @@ const enrollSchema = new mongoose.Schema(
           type: String,
           required: [true, "Course Name is required"],
         },
+        course: {
+          type: Object,
+        },
         paymentInfo: {
           price: {
             type: Number,
@@ -35,8 +38,9 @@ const enrollSchema = new mongoose.Schema(
         },
         completedChapter: [
           {
-            chapterNumber: {
-              type: Number,
+            chapterID: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Courses",
             },
             chapterTitle: {
               type: String,

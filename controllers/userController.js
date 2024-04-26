@@ -1,8 +1,9 @@
+import cloudinary from "cloudinary";
 import User from "../models/userModel.js";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { jwtSecret } from "../secret/secret.js";
-
+import { getDataUri } from "../utils/fileHandler.js";
 export const userRegister = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -147,6 +148,90 @@ export const purchaseCourse = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       message: "Course Purchased successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const userUpdate = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const { name } = req.body;
+
+    const getUser = await User.findById(user.id);
+
+    const file = getDataUri(req.file);
+    if (!getUser) {
+      throw Error("User not found");
+    }
+
+    if (name) {
+      getUser.name = name;
+    }
+    if (req.file) {
+      if (getUser.avatar.public_id) {
+        await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+      }
+      const myCloude = await cloudinary.v2.uploader.upload(file.content, {
+        folder: "LMS-React-native",
+      });
+      getUser.avatar = {
+        public_id: myCloude.public_id,
+        url: myCloude.secure_url,
+      };
+    }
+    await getUser.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "User updated syccessfully",
+      user: getUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updatePassword = async (req, res, next) => {
+  try {
+    const user = req.user;
+
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword) {
+      throw Error("Please provide Old Password");
+    }
+    if (!newPassword) {
+      throw Error("Plase provide New Password");
+    }
+    const getUser = await User.findById(user?.id).select("+password");
+
+    const comparePassword = bcryptjs.compare(oldPassword, getUser?.password);
+
+    if (!comparePassword) {
+      throw Error("Old Password not match");
+    }
+    getUser.password = newPassword;
+
+    await getUser.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Password Updated",
+      user: getUser,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUsersByPoint = async (req, res, next) => {
+  try {
+    const users = await User.find({}).sort({ point: -1 }).limit(50);
+
+    return res.status(201).json({
+      success: true,
+      users,
     });
   } catch (error) {
     next(error);

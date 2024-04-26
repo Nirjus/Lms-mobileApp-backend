@@ -1,7 +1,5 @@
 import mongoose from "mongoose";
 import bcryptjs from "bcryptjs";
-import { defaultAvatar } from "../secret/secret.js";
-import { readImageFile } from "../config/fileReader.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -34,13 +32,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "user",
     },
-    purchaseList: [
-      {
-        courseId: {
-          type: String,
-        },
-      },
-    ],
+    point: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

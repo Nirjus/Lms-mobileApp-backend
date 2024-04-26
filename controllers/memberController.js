@@ -51,3 +51,22 @@ export const createMemberShip = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getMembershipDetails = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const member = await MemberShip.findOne({
+      email: user?.email,
+    });
+    if (!member) {
+      throw Error("You have no membership");
+    }
+
+    return res.status(201).json({
+      success: true,
+      member,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
