@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   chapterCompleteController,
   checkChapterCompleted,
+  checkCourseComplete,
   checkEnroll,
   createEnrollMent,
   getEnrollCourses,
@@ -19,5 +20,7 @@ enrollRouter.put("/chapter-complete", isLogin, chapterCompleteController);
 enrollRouter.get("/check-complete", isLogin, checkChapterCompleted);
 
 enrollRouter.get("/getAll-enroll-course", isLogin, getEnrollCourses);
+
+enrollRouter.get("/check-courseComplete", isLogin, checkCourseComplete);
 
 export default enrollRouter;

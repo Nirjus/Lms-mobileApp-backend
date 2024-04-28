@@ -213,3 +213,37 @@ export const getEnrollCourses = async (req, res, next) => {
     next(error);
   }
 };
+
+export const checkCourseComplete = async (req, res, next) => {
+  try {
+    const user = req.user;
+
+    const isEnroll = await EnrollMent.findOne({
+      userId: user?.id,
+    });
+    const allcourses = await Course.find({});
+    if (!isEnroll) {
+      throw Error("You dont have any enrolled course");
+    }
+    const completedCourses = [];
+    // for(let i=0; i<allcourses.length; i++){}
+    isEnroll?.courseList?.forEach((item) => {
+      const course = allcourses?.find(
+        (crs) => crs?._id?.toString() === item?.courseId?.toString()
+      );
+      if (course?.chapter?.length === item?.completedChapter?.length) {
+        completedCourses.push(course);
+      }
+    });
+    if (completedCourses.length === 0) {
+      throw Error("You did not have any completed course");
+    }
+
+    return res.status(201).json({
+      success: true,
+      completedCourses,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
