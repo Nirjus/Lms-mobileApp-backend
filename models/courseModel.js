@@ -23,7 +23,31 @@ const reviewSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
+const questionSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+    },
+    question: {
+      type: String,
+    },
+    answers: [
+      {
+        userName: {
+          type: String,
+        },
+        answer: {
+          type: String,
+        },
+        create: {
+          type: Date,
+        },
+      },
+    ],
+  },
+  { timestamps: true }
+);
 const courseSchema = new mongoose.Schema(
   {
     name: {
@@ -94,6 +118,7 @@ const courseSchema = new mongoose.Schema(
         output: {
           type: String,
         },
+        qna: [questionSchema],
       },
     ],
     reviews: [reviewSchema],

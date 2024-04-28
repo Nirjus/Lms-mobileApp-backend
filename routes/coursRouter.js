@@ -4,11 +4,14 @@ import { isAdmin } from "../middleware/isAdmin.js";
 import { singleUpload } from "../middleware/multer.js";
 import {
   addChapter,
+  createAnswer,
   createCourse,
+  createQuestion,
   createReview,
   editChapter,
   editCourse,
   getAllCourse,
+  getCourse,
   getFreeCourses,
   getTopCourses,
 } from "../controllers/courseController.js";
@@ -43,6 +46,12 @@ courseRouter.put(
 );
 // ========================= User Routes =====================
 courseRouter.put("/add-review/:id", isLogin, createReview);
+
+courseRouter.get("/getCourse/:id", getCourse);
+
+courseRouter.put("/add-question/:id", isLogin, createQuestion);
+
+courseRouter.put("/add-answer/:id", isLogin, createAnswer);
 
 courseRouter.get("/getAll-courses", getAllCourse);
 

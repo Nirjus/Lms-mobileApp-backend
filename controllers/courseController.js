@@ -61,6 +61,24 @@ export const createCourse = async (req, res, next) => {
   }
 };
 
+export const getCourse = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+
+    if (!course) {
+      throw Error("Course not found with this ID");
+    }
+
+    return res.status(201).json({
+      success: true,
+      course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const addChapter = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -272,6 +290,7 @@ export const createReview = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       message: "review added successfully",
+      course,
     });
   } catch (error) {
     next(error);
@@ -336,6 +355,69 @@ export const getFreeCourses = async (req, res, next) => {
     return res.status(201).json({
       success: true,
       courses,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createQuestion = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+    const { chapterId } = req.query;
+    const { question } = req.body;
+    const course = await Course.findById(id);
+    if (!course) {
+      throw Error("Course not found");
+    }
+    const chapter = course.chapter.find(
+      (item) => item?._id?.toString() === chapterId.toString()
+    );
+    chapter.qna.push({
+      name: user?.name,
+      question: question,
+    });
+
+    await course.save();
+
+    return res.status(201).json({
+      success: true,
+      course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createAnswer = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+    const { chapterId, questionId } = req.query;
+    const course = await Course.findById(id);
+    const { answer } = req.body;
+    if (!course) {
+      throw Error("Course not found");
+    }
+    const chapter = course.chapter.find(
+      (item) => item?._id.toString() === chapterId.toString()
+    );
+    const question = chapter.qna.find(
+      (item) => item._id.toString() === questionId.toString()
+    );
+    question.answers.push({
+      userName: user?.name,
+      answer: answer,
+      create: Date.now(),
+    });
+
+    await course.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Answer added successfully",
+      course,
     });
   } catch (error) {
     next(error);

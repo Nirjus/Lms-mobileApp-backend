@@ -140,11 +140,11 @@ export const chapterCompleteController = async (req, res, next) => {
     const getUser = await User.findById(user?.id);
     if (course?.completedChapter?.length === getCourse?.chapter?.length) {
       if (getCourse?.courseLevel === "easy") {
-        getUser.point = 50;
+        getUser.point += 50;
       } else if (getCourse?.courseLevel === "medium") {
-        getUser.point = 100;
+        getUser.point += 100;
       } else {
-        getUser.point = 150;
+        getUser.point += 150;
       }
     }
 
