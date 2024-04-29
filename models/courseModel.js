@@ -48,6 +48,15 @@ const questionSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+const quizSchema = new mongoose.Schema({
+  question: {
+    type: String,
+  },
+  options: [String],
+  answerIndex: {
+    type: Number,
+  },
+});
 const courseSchema = new mongoose.Schema(
   {
     name: {
@@ -105,7 +114,6 @@ const courseSchema = new mongoose.Schema(
         },
         content: {
           type: String,
-          required: [true, "Content is required"],
         },
         video: {
           public_id: {
@@ -115,6 +123,7 @@ const courseSchema = new mongoose.Schema(
             type: String,
           },
         },
+        quiz: [quizSchema],
         output: {
           type: String,
         },

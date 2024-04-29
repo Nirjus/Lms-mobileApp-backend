@@ -123,6 +123,66 @@ export const addChapter = async (req, res, next) => {
   }
 };
 
+export const addQuize = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { quiz, title } = req.body;
+    const course = await Course.findById(id);
+
+    if (!course) {
+      throw Error("Course not found with this ID");
+    }
+    if (!quiz || !title) {
+      throw Error("Please provide quiz information");
+    }
+    const chapterData = {
+      title: title,
+      quiz: quiz, // Assigning the 'quiz' array to the 'quiz' property of the chapter
+    };
+    course.chapter.push(chapterData);
+    const chapterLength = course?.chapter?.length;
+    await course.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "quiz are added",
+      quiz: course?.chapter[chapterLength - 1].quiz,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const addMoreQuize = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+    if (!course) {
+      throw Error("Course not found");
+    }
+    const { quiz } = req.body;
+    if (!quiz) {
+      throw Error("Quiz not present");
+    }
+    const chapterLength = course?.chapter?.length;
+
+    const chapter = course.chapter[chapterLength - 1];
+    quiz.map((item) => {
+      chapter.quiz.push(item);
+    });
+
+    await course.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "More quize added",
+      quize: chapter.quiz,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const editCourse = async (req, res, next) => {
   try {
     const { id } = req.params;

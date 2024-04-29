@@ -4,6 +4,8 @@ import { isAdmin } from "../middleware/isAdmin.js";
 import { singleUpload } from "../middleware/multer.js";
 import {
   addChapter,
+  addMoreQuize,
+  addQuize,
   createAnswer,
   createCourse,
   createQuestion,
@@ -44,6 +46,10 @@ courseRouter.put(
   singleUpload,
   editChapter
 );
+
+courseRouter.put("/add-quiz/:id", isLogin, isAdmin, addQuize);
+courseRouter.put("/addMore-quiz/:id", isLogin, isAdmin, addMoreQuize);
+
 // ========================= User Routes =====================
 courseRouter.put("/add-review/:id", isLogin, createReview);
 
