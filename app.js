@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import helmet from "helmet";
+import mongoSanitize from "express-mongo-sanitize";
 import userRouter from "./routes/userRoutes.js";
 import courseRouter from "./routes/coursRouter.js";
 import categoryRoutes from "./routes/categoryRouter.js";
@@ -9,6 +11,8 @@ import memberRouter from "./routes/memberRouter.js";
 
 const app = express();
 
+app.use(helmet());
+app.use(mongoSanitize());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));

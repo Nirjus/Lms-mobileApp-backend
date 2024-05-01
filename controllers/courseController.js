@@ -1,6 +1,10 @@
 import cloudinary from "cloudinary";
+import NodeCache from "node-cache";
 import { getDataUri } from "../utils/fileHandler.js";
 import Course from "../models/courseModel.js";
+
+const nodeCache = new NodeCache();
+
 export const createCourse = async (req, res, next) => {
   try {
     if (!req.file) {
@@ -50,7 +54,8 @@ export const createCourse = async (req, res, next) => {
       courseLevel: courseLevel,
       tags: tags,
     });
-
+    nodeCache.del("topCourse");
+    nodeCache.del("freeCourse");
     return res.status(201).json({
       success: true,
       message: "Course created successfully",
@@ -112,7 +117,8 @@ export const addChapter = async (req, res, next) => {
     course.chapter.push(chapter);
 
     await course.save();
-
+    nodeCache.del("topCourse");
+    nodeCache.del("freeCourse");
     return res.status(201).json({
       success: true,
       message: "new chapter added in Course",
@@ -142,7 +148,8 @@ export const addQuize = async (req, res, next) => {
     course.chapter.push(chapterData);
     const chapterLength = course?.chapter?.length;
     await course.save();
-
+    nodeCache.del("topCourse");
+    nodeCache.del("freeCourse");
     return res.status(201).json({
       success: true,
       message: "quiz are added",
@@ -172,7 +179,8 @@ export const addMoreQuize = async (req, res, next) => {
     });
 
     await course.save();
-
+    nodeCache.del("topCourse");
+    nodeCache.del("freeCourse");
     return res.status(201).json({
       success: true,
       message: "More quize added",
@@ -240,7 +248,8 @@ export const editCourse = async (req, res, next) => {
     }
 
     await course.save();
-
+    nodeCache.del("topCourse");
+    nodeCache.del("freeCourse");
     return res.status(201).json({
       success: true,
       message: `(${course.name}) Course updated successfully`,
@@ -298,7 +307,8 @@ export const editChapter = async (req, res, next) => {
     }
 
     await course.save();
-
+    nodeCache.del("topCourse");
+    nodeCache.del("freeCourse");
     return res.status(201).json({
       success: true,
       message: "Chapter updated",
@@ -347,6 +357,9 @@ export const createReview = async (req, res, next) => {
 
     await course.save();
 
+    nodeCache.del("topCourse");
+    nodeCache.del("freeCourse");
+
     return res.status(201).json({
       success: true,
       message: "review added successfully",
@@ -390,7 +403,13 @@ export const getAllCourse = async (req, res, next) => {
 };
 export const getTopCourses = async (req, res, next) => {
   try {
-    const courses = await Course.find({}).sort({ rating: -1 }).limit(4);
+    let courses;
+    if (nodeCache.has("topCourse")) {
+      courses = JSON.parse(nodeCache.get("topCourse"));
+    } else {
+      courses = await Course.find({}).sort({ rating: -1 }).limit(10);
+      nodeCache.set("topCourse", JSON.stringify(courses));
+    }
 
     return res.status(201).json({
       success: true,
@@ -404,9 +423,16 @@ export const getTopCourses = async (req, res, next) => {
 
 export const getFreeCourses = async (req, res, next) => {
   try {
-    const courses = await Course.find({
-      price: 0,
-    }).sort({ createdAt: -1 });
+    let courses;
+
+    if (nodeCache.has("freeCourse")) {
+      courses = JSON.parse(nodeCache.get("freeCourse"));
+    } else {
+      courses = await Course.find({
+        price: 0,
+      }).sort({ createdAt: -1 });
+      nodeCache.set("freeCourse", JSON.stringify(courses));
+    }
 
     if (courses.length === 0) {
       throw Error("No free courses availabel");
@@ -440,7 +466,8 @@ export const createQuestion = async (req, res, next) => {
     });
 
     await course.save();
-
+    nodeCache.del("topCourse");
+    nodeCache.del("freeCourse");
     return res.status(201).json({
       success: true,
       course,
@@ -473,7 +500,8 @@ export const createAnswer = async (req, res, next) => {
     });
 
     await course.save();
-
+    nodeCache.del("topCourse");
+    nodeCache.del("freeCourse");
     return res.status(201).json({
       success: true,
       message: "Answer added successfully",
