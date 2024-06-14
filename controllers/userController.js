@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import { backendUrl, jwtSecret } from "../secret/secret.js";
 import { getDataUri } from "../utils/fileHandler.js";
 import { sendEmail } from "../config/Nodemailer.js";
+import Course from "../models/courseModel.js";
 export const userRegister = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -195,7 +196,7 @@ export const userUpdate = async (req, res, next) => {
     const { name } = req.body;
 
     const getUser = await User.findById(user.id);
-
+    const courses = await Course.find({});
     const file = getDataUri(req.file);
     if (!getUser) {
       throw Error("User not found");
@@ -215,6 +216,17 @@ export const userUpdate = async (req, res, next) => {
         public_id: myCloude.public_id,
         url: myCloude.secure_url,
       };
+      courses.forEach((course) => {
+        course.reviews.forEach((review) => {
+          if (review.userId?.toString() === getUser?._id?.toString()) {
+            (review.avatar = getUser.avatar?.url), (review.name = getUser.name);
+          }
+        });
+      });
+      // Save the updated courses
+      for (const course of courses) {
+        await course.save();
+      }
     }
     await getUser.save();
 
