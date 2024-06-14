@@ -11,7 +11,21 @@ const memberSchema = new mongoose.Schema(
       required: true,
     },
     subscription: {
-      type: Object,
+      subscriptionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Subscription",
+      },
+      endDate: {
+        type: Date,
+        required: true,
+      },
+      subscriptionPeriod: {
+        type: String,
+      },
+      price: {
+        type: Number,
+        required: true,
+      },
     },
     Active: {
       type: Boolean,

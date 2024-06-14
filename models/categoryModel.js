@@ -5,7 +5,6 @@ const categorySchema = new mongoose.Schema(
     name: {
       type: String,
       unique: true,
-      required: [true, "Category name is required"],
     },
     icon: {
       public_id: {
@@ -14,6 +13,10 @@ const categorySchema = new mongoose.Schema(
       url: {
         type: String,
       },
+    },
+    isPublished: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

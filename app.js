@@ -8,6 +8,8 @@ import courseRouter from "./routes/coursRouter.js";
 import categoryRoutes from "./routes/categoryRouter.js";
 import enrollRouter from "./routes/enrollRouter.js";
 import memberRouter from "./routes/memberRouter.js";
+import { subscriptionRouter } from "./routes/subscriptionRouter.js";
+import qnaRouter from "./routes/qnaRouter.js";
 
 const app = express();
 
@@ -26,9 +28,11 @@ app.get("/", (req, res) => {
 
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/course", courseRouter);
+app.use("/api/v1/qna", qnaRouter);
 app.use("/api/v1/category", categoryRoutes);
 app.use("/api/v1/enroll", enrollRouter);
 app.use("/api/v1/member", memberRouter);
+app.use("/api/v1/subscription", subscriptionRouter);
 
 // server erro
 

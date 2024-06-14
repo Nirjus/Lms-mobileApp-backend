@@ -17,7 +17,7 @@ enrollRouter.get("/check-enroll", isLogin, checkEnroll);
 
 enrollRouter.put("/chapter-complete", isLogin, chapterCompleteController);
 
-enrollRouter.get("/check-complete", isLogin, checkChapterCompleted);
+enrollRouter.get("/check-complete/:courseId", isLogin, checkChapterCompleted);
 
 enrollRouter.get("/getAll-enroll-course", isLogin, getEnrollCourses);
 

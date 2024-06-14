@@ -19,6 +19,8 @@ export const cludinaryApiSecret = process.env.CLOUDINARY_API_SECRET || "";
 
 export const defaultAvatar = "./assets/images/pngegg.png";
 
-export const stripeSecret = process.env.STRIPE_SECRET_KEY || "";
+export const smtpUserName = process.env.SMTP_USERNAME || "";
 
-export const stripePublishKey = process.env.STRIPE_PUBLISH_KEY || "";
+export const smtpPassword = process.env.SMTP_PASSWORD || "";
+
+export const backendUrl = process.env.BACKEND_URL || "";

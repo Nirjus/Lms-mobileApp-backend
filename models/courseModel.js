@@ -11,6 +11,7 @@ const reviewSchema = new mongoose.Schema(
     },
     comment: {
       type: String,
+      trim: true,
     },
     avatar: {
       type: String,
@@ -23,31 +24,7 @@ const reviewSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-const questionSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: [true, "Name is required"],
-    },
-    question: {
-      type: String,
-    },
-    answers: [
-      {
-        userName: {
-          type: String,
-        },
-        answer: {
-          type: String,
-        },
-        create: {
-          type: Date,
-        },
-      },
-    ],
-  },
-  { timestamps: true }
-);
+
 const quizSchema = new mongoose.Schema({
   question: {
     type: String,
@@ -55,6 +32,38 @@ const quizSchema = new mongoose.Schema({
   options: [String],
   answerIndex: {
     type: Number,
+  },
+});
+const chapterModel = new mongoose.Schema({
+  isPublished: {
+    type: Boolean,
+    default: false,
+  },
+  title: {
+    type: String,
+    required: [true, "Course Title is required"],
+  },
+  content: {
+    type: String,
+  },
+  isFree: {
+    type: Boolean,
+    default: false,
+  },
+  video: {
+    public_id: {
+      type: String,
+    },
+    url: {
+      type: String,
+    },
+    duration: {
+      type: String,
+    },
+  },
+  quiz: [quizSchema],
+  output: {
+    type: String,
   },
 });
 const courseSchema = new mongoose.Schema(
@@ -67,9 +76,11 @@ const courseSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      required: [true, "Description is required"],
     },
-
+    isPublished: {
+      type: Boolean,
+      default: false,
+    },
     banner: {
       public_id: {
         type: String,
@@ -80,11 +91,10 @@ const courseSchema = new mongoose.Schema(
     },
     time: {
       type: String,
-      required: [true, "Time is required"],
+      default: "00:00",
     },
     price: {
       type: Number,
-      required: [true, "Price is required"],
     },
     rating: {
       type: Number,
@@ -95,41 +105,17 @@ const courseSchema = new mongoose.Schema(
     },
     courseLevel: {
       type: String,
-      required: [true, "Level is required"],
       enum: ["easy", "medium", "hard"],
       default: "easy",
     },
     tags: {
-      type: String,
+      type: [String],
+      default: [],
     },
     category: {
       type: String,
-      required: [true, "Category is required"],
     },
-    chapter: [
-      {
-        title: {
-          type: String,
-          required: [true, "Course Title is required"],
-        },
-        content: {
-          type: String,
-        },
-        video: {
-          public_id: {
-            type: String,
-          },
-          url: {
-            type: String,
-          },
-        },
-        quiz: [quizSchema],
-        output: {
-          type: String,
-        },
-        qna: [questionSchema],
-      },
-    ],
+    chapter: [chapterModel],
     reviews: [reviewSchema],
   },
   { timestamps: true }

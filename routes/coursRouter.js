@@ -4,15 +4,12 @@ import { isAdmin } from "../middleware/isAdmin.js";
 import { singleUpload } from "../middleware/multer.js";
 import {
   addChapter,
-  addMoreQuize,
   addQuize,
-  createAnswer,
-  createCourse,
-  createQuestion,
   createReview,
   editChapter,
   editCourse,
   getAllCourse,
+  getChapter,
   getCourse,
   getFreeCourses,
   getTopCourses,
@@ -21,7 +18,6 @@ import {
 const courseRouter = Router();
 
 // ========================= Admin Routes ======================
-courseRouter.post("/create", isLogin, isAdmin, singleUpload, createCourse);
 
 courseRouter.put(
   "/add-chapter/:id",
@@ -48,16 +44,13 @@ courseRouter.put(
 );
 
 courseRouter.put("/add-quiz/:id", isLogin, isAdmin, addQuize);
-courseRouter.put("/addMore-quiz/:id", isLogin, isAdmin, addMoreQuize);
 
 // ========================= User Routes =====================
 courseRouter.put("/add-review/:id", isLogin, createReview);
 
 courseRouter.get("/getCourse/:id", getCourse);
 
-courseRouter.put("/add-question/:id", isLogin, createQuestion);
-
-courseRouter.put("/add-answer/:id", isLogin, createAnswer);
+courseRouter.get("/getChapter/:id/chapter", isLogin, getChapter);
 
 courseRouter.get("/getAll-courses", getAllCourse);
 

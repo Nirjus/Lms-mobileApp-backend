@@ -1,61 +1,21 @@
 import cloudinary from "cloudinary";
-import NodeCache from "node-cache";
 import { getDataUri } from "../utils/fileHandler.js";
 import Course from "../models/courseModel.js";
+import { durationToMinute, minutesToDuration } from "../utils/timeHandler.js";
 
-const nodeCache = new NodeCache();
-
-export const createCourse = async (req, res, next) => {
+export const courseOnboarding = async (req, res, next) => {
   try {
-    if (!req.file) {
-      throw Error("File upload banner is required");
+    const user = req.user;
+    const { name } = req.body;
+    if (!name) {
+      throw Error("Please provide a name of your course");
     }
-    const {
-      name,
-      description,
-      time,
-      price,
-      author,
-      courseLevel,
-      tags,
-      category,
-    } = req.body;
-
-    if (
-      !name ||
-      !description ||
-      !time ||
-      !price ||
-      !author ||
-      !courseLevel ||
-      !tags ||
-      !category
-    ) {
-      throw Error("Please field all field");
-    }
-    const file = getDataUri(req.file);
-    const myCloude = await cloudinary.v2.uploader.upload(file.content, {
-      folder: "LMS-React-native",
-    });
-
-    const image = {
-      public_id: myCloude.public_id,
-      url: myCloude.secure_url,
-    };
 
     const course = await Course.create({
       name: name,
-      description: description,
-      time: time,
-      price: price,
-      author: author,
-      banner: image,
-      category: category,
-      courseLevel: courseLevel,
-      tags: tags,
+      author: user?.name,
     });
-    nodeCache.del("topCourse");
-    nodeCache.del("freeCourse");
+
     return res.status(201).json({
       success: true,
       message: "Course created successfully",
@@ -65,7 +25,39 @@ export const createCourse = async (req, res, next) => {
     next(error);
   }
 };
-
+export const publisedCourse = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+    if (!course) {
+      throw Error("Course not found");
+    }
+    const { isPublished } = req.body;
+    if (
+      !course.name ||
+      !course.description ||
+      !course.banner ||
+      !course.category ||
+      course.price === undefined ||
+      !course.courseLevel ||
+      course.tags.length === 0 ||
+      course.chapter.length === 0
+    ) {
+      throw Error("Missing required fields");
+    }
+    if (isPublished !== undefined) {
+      course.isPublished = isPublished;
+    }
+    await course.save();
+    return res.status(201).json({
+      success: true,
+      message: course?.isPublished ? "Course published" : "Course unpublished",
+      course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 export const getCourse = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -74,12 +66,19 @@ export const getCourse = async (req, res, next) => {
     if (!course) {
       throw Error("Course not found with this ID");
     }
-
+    // filter chapters to include only published course
+    course.chapter = course.chapter.filter((ch) => ch.isPublished === true);
     return res.status(201).json({
       success: true,
       course,
     });
   } catch (error) {
+    if (error.name === "CastError") {
+      return res.status(500).send({
+        success: false,
+        message: "Invalid Id",
+      });
+    }
     next(error);
   }
 };
@@ -87,38 +86,21 @@ export const getCourse = async (req, res, next) => {
 export const addChapter = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, content, output } = req.body;
+    const { title } = req.body;
     const course = await Course.findById(id);
 
     if (!course) {
       throw Error("Course not found with this ID");
     }
 
-    if (!title || !content || !output) {
-      throw Error("Please provide all information");
+    if (!title) {
+      throw Error("Please provide chapter title");
     }
-    if (!req.file) {
-      throw Error("Video is required");
-    }
-    const file = getDataUri(req.file);
-    const myCloude = await cloudinary.v2.uploader.upload(file.content, {
-      resource_type: "video",
-      folder: "LMS-React-native",
-    });
-    const chapter = {
-      title: title,
-      content: content,
-      video: {
-        public_id: myCloude.public_id,
-        url: myCloude.secure_url,
-      },
-      output: output,
-    };
-    course.chapter.push(chapter);
+
+    course.chapter.push({ title: title });
 
     await course.save();
-    nodeCache.del("topCourse");
-    nodeCache.del("freeCourse");
+
     return res.status(201).json({
       success: true,
       message: "new chapter added in Course",
@@ -129,62 +111,153 @@ export const addChapter = async (req, res, next) => {
   }
 };
 
-export const addQuize = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { quiz, title } = req.body;
-    const course = await Course.findById(id);
-
-    if (!course) {
-      throw Error("Course not found with this ID");
-    }
-    if (!quiz || !title) {
-      throw Error("Please provide quiz information");
-    }
-    const chapterData = {
-      title: title,
-      quiz: quiz, // Assigning the 'quiz' array to the 'quiz' property of the chapter
-    };
-    course.chapter.push(chapterData);
-    const chapterLength = course?.chapter?.length;
-    await course.save();
-    nodeCache.del("topCourse");
-    nodeCache.del("freeCourse");
-    return res.status(201).json({
-      success: true,
-      message: "quiz are added",
-      quiz: course?.chapter[chapterLength - 1].quiz,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const addMoreQuize = async (req, res, next) => {
+export const getChapter = async (req, res, next) => {
   try {
     const { id } = req.params;
     const course = await Course.findById(id);
     if (!course) {
       throw Error("Course not found");
     }
-    const { quiz } = req.body;
-    if (!quiz) {
-      throw Error("Quiz not present");
+    const { chapterId } = req.query;
+    if (!chapterId) {
+      throw Error("Chapter Id not found");
     }
-    const chapterLength = course?.chapter?.length;
+    const chapter = course.chapter.find(
+      (chp) => chp._id.toString() === chapterId.toString()
+    );
 
-    const chapter = course.chapter[chapterLength - 1];
-    quiz.map((item) => {
-      chapter.quiz.push(item);
-    });
-
-    await course.save();
-    nodeCache.del("topCourse");
-    nodeCache.del("freeCourse");
+    if (!chapter) {
+      throw Error("Chapter not found");
+    }
     return res.status(201).json({
       success: true,
-      message: "More quize added",
-      quize: chapter.quiz,
+      message: "Chapter get successfully",
+      chapter,
+    });
+  } catch (error) {
+    if (error.name === "CastError") {
+      return res.status(500).send({
+        success: false,
+        message: "Invalid Id",
+      });
+    }
+    next(error);
+  }
+};
+
+export const deleteChapter = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+    if (!course) {
+      throw Error("Course not found");
+    }
+    const { chapterId } = req.query;
+    if (!chapterId) {
+      throw Error("Chapter Id not found");
+    }
+
+    const chapterIndex = course.chapter.findIndex(
+      (chp) => chp._id.toString() === chapterId.toString()
+    );
+    const chapter = course.chapter[chapterIndex];
+    if (!chapter) {
+      throw Error("No chapter found");
+    }
+    if (chapter.video.public_id) {
+      // delete video from cloudinary
+      await cloudinary.v2.uploader.destroy(chapter.video.public_id, {
+        resource_type: "video",
+      });
+      // removing video duration from total course duration
+      const duration =
+        durationToMinute(course?.time) -
+        durationToMinute(chapter.video.duration);
+      course.time = minutesToDuration(duration);
+    }
+    if (chapter.isPublished) {
+      throw Error("Please unpublish the chapter before deleting");
+    }
+    course.chapter.splice(chapterIndex, 1);
+
+    await course.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Chapter deleted successfully",
+      course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+export const addQuize = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+    if (!course) {
+      throw Error("Course not found with this ID");
+    }
+    const { chapterId } = req.query;
+    if (!chapterId) {
+      throw Error("Chapter Id not found");
+    }
+    const chapter = course.chapter.find(
+      (chp) => chp._id.toString() === chapterId.toString()
+    );
+    if (!chapter) {
+      throw Error("Chapter not found");
+    }
+    const { question, options, answerIndex } = req.body;
+    if (!question || answerIndex === undefined || options.length === 0) {
+      throw Error("Please provide quiz information");
+    }
+    const quiz = {
+      question: question,
+      options: options,
+      answerIndex: answerIndex,
+    };
+    chapter.quiz.push(quiz);
+
+    await course.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "quiz are added",
+      chapter,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const removeQuize = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+    if (!course) {
+      throw Error("Course not found");
+    }
+    const { chapterId } = req.query;
+    if (!chapterId) {
+      throw Error("Chapter Id not found");
+    }
+    const chapter = course.chapter.find(
+      (chp) => chp._id.toString() === chapterId.toString()
+    );
+    if (!chapter) {
+      throw Error("Chapter not found");
+    }
+    const { index } = req.body;
+
+    chapter.quiz.splice(index, 1);
+
+    await course.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "quize removed successfully",
+      chapter,
     });
   } catch (error) {
     next(error);
@@ -198,16 +271,7 @@ export const editCourse = async (req, res, next) => {
     if (!course) {
       throw Error("Course not found");
     }
-    const {
-      name,
-      description,
-      time,
-      price,
-      author,
-      courseLevel,
-      tags,
-      category,
-    } = req.body;
+    const { name, description, price, courseLevel, tags, category } = req.body;
     if (name) {
       course.name = name;
     }
@@ -218,23 +282,19 @@ export const editCourse = async (req, res, next) => {
       course.category = category;
     }
     if (tags) {
-      course.tags = tags;
-    }
-    if (time) {
-      course.time = time;
+      course.tags.push(tags);
     }
     if (price) {
       course.price = price;
-    }
-    if (author) {
-      course.author = author;
     }
     if (courseLevel) {
       course.courseLevel = courseLevel;
     }
 
     if (req.file) {
-      await cloudinary.v2.uploader.destroy(course.banner.public_id);
+      if (course.banner.public_id) {
+        await cloudinary.v2.uploader.destroy(course.banner.public_id);
+      }
       const file = getDataUri(req.file);
 
       const myCloude = await cloudinary.v2.uploader.upload(file.content, {
@@ -248,11 +308,31 @@ export const editCourse = async (req, res, next) => {
     }
 
     await course.save();
-    nodeCache.del("topCourse");
-    nodeCache.del("freeCourse");
+
     return res.status(201).json({
       success: true,
       message: `(${course.name}) Course updated successfully`,
+      course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteTags = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+    if (!course) {
+      throw Error("Course not found");
+    }
+    const { index } = req.body;
+    course.tags.splice(index, 1);
+    await course.save();
+
+    return res.status(201).json({
+      success: true,
+      message: `Tags deleted successfully`,
       course,
     });
   } catch (error) {
@@ -271,13 +351,16 @@ export const editChapter = async (req, res, next) => {
     if (!chapterId) {
       throw Error("Chapter not found");
     }
-    const { title, content, output } = req.body;
+    const { title, content, output, isFree, duration } = req.body;
     const chapter = course.chapter.find(
       (chp) => chp._id.toString() === chapterId.toString()
     );
 
     if (!chapter) {
       throw Error("Chapter not found");
+    }
+    if (isFree !== undefined) {
+      chapter.isFree = isFree;
     }
     if (title) {
       chapter.title = title;
@@ -290,28 +373,114 @@ export const editChapter = async (req, res, next) => {
     }
 
     if (req.file) {
-      await cloudinary.v2.uploader.destroy(chapter.video.public_id);
-
+      let oldVideoDuration = 0;
+      if (chapter.video.public_id) {
+        await cloudinary.v2.uploader.destroy(chapter.video.public_id, {
+          resource_type: "video",
+        });
+        oldVideoDuration = durationToMinute(chapter.video.duration);
+      }
       const file = getDataUri(req.file);
       const myCloude = await cloudinary.v2.uploader.upload(file.content, {
         resource_type: "video",
         folder: "LMS-React-native",
       });
+      if (!duration) {
+        throw Error("Video duration is required");
+      }
 
       const video = {
         public_id: myCloude.public_id,
         url: myCloude.secure_url,
+        duration: duration,
       };
 
       chapter.video = video;
+      const totalDurationMinutes =
+        durationToMinute(course.time) -
+        oldVideoDuration +
+        durationToMinute(duration);
+
+      course.time = minutesToDuration(totalDurationMinutes);
     }
 
     await course.save();
-    nodeCache.del("topCourse");
-    nodeCache.del("freeCourse");
+
     return res.status(201).json({
       success: true,
       message: "Chapter updated",
+      chapter,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+export const publisedOrUnpublished = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+    if (!course) {
+      throw Error("Course not found");
+    }
+    const { chapterId } = req.query;
+    if (!chapterId) {
+      throw Error("Chapter not found");
+    }
+    const { isPublished } = req.body;
+    const chapter = course.chapter.find(
+      (chp) => chp._id.toString() === chapterId.toString()
+    );
+    if (
+      !chapter.title ||
+      !chapter.content ||
+      !chapter.output ||
+      !chapter.video
+    ) {
+      throw Error("Missing required fields");
+    }
+    chapter.isPublished = isPublished;
+
+    if (course.isPublished) {
+      const atleastOnePublishedChapter = course.chapter.findIndex(
+        (item) => item.isPublished === true
+      );
+      if (atleastOnePublishedChapter === -1) {
+        course.isPublished = false;
+      }
+    }
+
+    await course.save();
+    return res.status(201).json({
+      success: true,
+      message: chapter?.isPublished
+        ? "Chapter published"
+        : "Chapter unpublished",
+      chapter,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+export const reOrderChapter = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+    if (!course) {
+      throw Error("Course not found");
+    }
+    const { index, newPosition } = req.body;
+
+    const chapter = course.chapter[index];
+
+    course.chapter.splice(index, 1);
+
+    course.chapter.splice(newPosition, 0, chapter);
+
+    await course.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Chapter reorderd successfully",
       course,
     });
   } catch (error) {
@@ -357,13 +526,25 @@ export const createReview = async (req, res, next) => {
 
     await course.save();
 
-    nodeCache.del("topCourse");
-    nodeCache.del("freeCourse");
+    course.chapter = course.chapter.filter((ch) => ch.isPublished === true);
 
     return res.status(201).json({
       success: true,
       message: "review added successfully",
       course,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+export const getAllCourseForAdmin = async (req, res, next) => {
+  try {
+    const courses = await Course.find({}).sort({ createdAt: -1 });
+
+    return res.status(201).json({
+      success: true,
+      message: "All Courses are return successfully",
+      courses,
     });
   } catch (error) {
     next(error);
@@ -390,8 +571,14 @@ export const getAllCourse = async (req, res, next) => {
         $regex: courseLevel ? courseLevel : "",
         $options: "i",
       },
+      isPublished: true,
     }).sort({ createdAt: -1 });
-
+    courses.forEach(
+      (course) =>
+        (course.chapter = course.chapter.filter(
+          (chapter) => chapter.isPublished === true
+        ))
+    );
     return res.status(201).json({
       success: true,
       message: "All Courses are return successfully",
@@ -403,14 +590,15 @@ export const getAllCourse = async (req, res, next) => {
 };
 export const getTopCourses = async (req, res, next) => {
   try {
-    let courses;
-    if (nodeCache.has("topCourse")) {
-      courses = JSON.parse(nodeCache.get("topCourse"));
-    } else {
-      courses = await Course.find({}).sort({ rating: -1 }).limit(10);
-      nodeCache.set("topCourse", JSON.stringify(courses));
-    }
-
+    const courses = await Course.find({ isPublished: true })
+      .sort({ rating: -1 })
+      .limit(10);
+    courses.forEach(
+      (course) =>
+        (course.chapter = course.chapter.filter(
+          (chapter) => chapter.isPublished === true
+        ))
+    );
     return res.status(201).json({
       success: true,
       message: "Top 4 courses",
@@ -423,21 +611,20 @@ export const getTopCourses = async (req, res, next) => {
 
 export const getFreeCourses = async (req, res, next) => {
   try {
-    let courses;
-
-    if (nodeCache.has("freeCourse")) {
-      courses = JSON.parse(nodeCache.get("freeCourse"));
-    } else {
-      courses = await Course.find({
-        price: 0,
-      }).sort({ createdAt: -1 });
-      nodeCache.set("freeCourse", JSON.stringify(courses));
-    }
+    const courses = await Course.find({
+      price: 0,
+      isPublished: true,
+    }).sort({ createdAt: -1 });
 
     if (courses.length === 0) {
       throw Error("No free courses availabel");
     }
-
+    courses.forEach(
+      (course) =>
+        (course.chapter = course.chapter.filter(
+          (chapter) => chapter.isPublished === true
+        ))
+    );
     return res.status(201).json({
       success: true,
       courses,
@@ -447,65 +634,34 @@ export const getFreeCourses = async (req, res, next) => {
   }
 };
 
-export const createQuestion = async (req, res, next) => {
+export const deleteCourse = async (req, res, next) => {
   try {
-    const user = req.user;
     const { id } = req.params;
-    const { chapterId } = req.query;
-    const { question } = req.body;
     const course = await Course.findById(id);
     if (!course) {
       throw Error("Course not found");
     }
-    const chapter = course.chapter.find(
-      (item) => item?._id?.toString() === chapterId.toString()
-    );
-    chapter.qna.push({
-      name: user?.name,
-      question: question,
-    });
-
-    await course.save();
-    nodeCache.del("topCourse");
-    nodeCache.del("freeCourse");
-    return res.status(201).json({
-      success: true,
-      course,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const createAnswer = async (req, res, next) => {
-  try {
-    const user = req.user;
-    const { id } = req.params;
-    const { chapterId, questionId } = req.query;
-    const course = await Course.findById(id);
-    const { answer } = req.body;
-    if (!course) {
-      throw Error("Course not found");
+    if (course.isPublished) {
+      throw Error("Please unpublish the course before deleting");
     }
-    const chapter = course.chapter.find(
-      (item) => item?._id.toString() === chapterId.toString()
-    );
-    const question = chapter.qna.find(
-      (item) => item._id.toString() === questionId.toString()
-    );
-    question.answers.push({
-      userName: user?.name,
-      answer: answer,
-      create: Date.now(),
-    });
+    if (course.banner.public_id) {
+      await cloudinary.v2.uploader.destroy(course.banner.public_id);
+    }
 
-    await course.save();
-    nodeCache.del("topCourse");
-    nodeCache.del("freeCourse");
+    for (let i = 0; i < course.chapter.length; i++) {
+      const chapter = course.chapter[i];
+      if (chapter.video.public_id) {
+        await cloudinary.v2.uploader.destroy(chapter.video.public_id, {
+          resource_type: "video",
+        });
+      }
+    }
+
+    await course.deleteOne();
+
     return res.status(201).json({
       success: true,
-      message: "Answer added successfully",
-      course,
+      message: "Course deleted successfully",
     });
   } catch (error) {
     next(error);
